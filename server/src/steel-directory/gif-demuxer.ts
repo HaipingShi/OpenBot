@@ -10,7 +10,9 @@
  * contact phone numbers across ALL animation frames in a single API call with zero extra cost.
  */
 
+// @ts-ignore
 import { GifReader } from "omggif";
+// @ts-ignore
 import { PNG } from "pngjs";
 
 export interface DemuxResult {

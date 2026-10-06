@@ -181,7 +181,7 @@ export async function parseAdBannerWithVision(
       return memoryOcrCache.get(fingerprint)!;
     }
 
-    let finalBuffer = buffer;
+    let finalBuffer: any = buffer;
     let finalContentType = imgRes.headers.get("content-type") || "image/jpeg";
 
     // Handle Animated GIFs (demux multiple frames and vertically stitch to PNG filmstrip)
