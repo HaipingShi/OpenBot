@@ -328,6 +328,54 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
     ]),
     docsUrl: "https://github.com/CopilotKit/OpenBot/blob/main/docs/routines.md",
   },
+  {
+    key: "steel-directory",
+    title: "Enterprise Directory",
+    vendor: "OpenBot",
+    summary:
+      "The record of which outside companies were found, what pages said about them, and who checked.",
+    /*
+     * First-party and in-process, like Routines above: no host to dial, no credential to hold, no
+     * network call. In the catalogue for the same reason and more so — this entry is what makes the
+     * directory a capability a deployment grants deliberately rather than something every Bot can
+     * reach, and it is what puts each write under the action policy and into the trail.
+     *
+     * `builtin://` rather than a real host because there is nothing outside this process to reach.
+     * The alternative considered and rejected was a separate service on localhost, which the custom
+     * server path refuses outright — correctly, because that refusal is what stops "add an MCP
+     * server" from being a request-forgery primitive aimed at this deployment's own network. A
+     * capability with no URL at all is the shape that gets the same governance without weakening it.
+     */
+    host: "builtin://steel-directory",
+    path: "/",
+    transport: "builtin-steel-directory",
+    auth: Object.freeze({ kind: "builtin" }),
+    /*
+     * THE WRITE LIST IS THE POLICY'S VOCABULARY, so every name that changes a row is here and no
+     * read is. An omission is not neutral: {@link classifyTool} reads an advertised name absent from
+     * this list as a READ, so a write left off would be a write the policy engine has never heard of
+     * and a rule about `mcp.effect == "write"` would not cover it. That makes this list lean
+     * over-inclusive on purpose, the same way Notion's does and for the same reason.
+     *
+     * `record_review_decision` is on it and is the one that matters most: it is a person's
+     * authorisation being written down, so a deployment that wants to be sure no Bot does it
+     * unattended has one name to write a rule about.
+     */
+    writeTools: Object.freeze([
+      "record_source",
+      "mark_source_blocked",
+      "record_snapshot",
+      "record_entry",
+      "record_claim",
+      "record_phone_claim",
+      "resolve_entry",
+      "verify_entry",
+      "queue_review",
+      "record_review_decision",
+    ]),
+    docsUrl:
+      "https://github.com/CopilotKit/OpenBot/blob/main/examples/steel-directory/README.md",
+  },
 ]);
 
 const BY_KEY = new Map(CATALOGUE.map((entry) => [entry.key, entry]));

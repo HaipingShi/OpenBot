@@ -1,0 +1,10 @@
+# Which model the Bots here run on.
+#
+# `default_model` is what this deployment uses when `BOT_MODEL` is unset. Where an OpenAI-compatible
+# endpoint is configured — a gateway, a proxy, a model on hardware you control — `BOT_MODEL` wins and
+# this line is a fallback rather than a decision. Model names travel verbatim, so whatever the
+# endpoint publishes is what belongs here.
+model:
+  provider: openai
+  credential_secret_ref: openai-api-key
+  default_model: gpt-5.6-terra

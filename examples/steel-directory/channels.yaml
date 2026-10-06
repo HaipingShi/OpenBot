@@ -1,0 +1,61 @@
+# The channels this package publishes, and which Bots may be addressed in each.
+#
+# A CHANNEL IS WHERE A CONVERSATION HAPPENS, and it is pinned to one Bot for the life of its thread —
+# which is why this team has several rather than one. The coordinator is the door: a task goes there,
+# it hands stages to the specialists through `message_bot`, and their answers come back into the same
+# conversation. A channel per specialist exists so a person can go straight to one of them when they
+# already know which stage they want, without going through the coordinator.
+#
+# WHAT `permitted_agents` DOES AND DOES NOT DO. It decides which Bots may be addressed in that
+# channel; the loader refuses a channel naming an agent the package does not declare. It does not
+# grant anybody access to the channel — that is `channel_memberships`, and it is why a fresh
+# deployment has these channels and nobody in them until somebody is added.
+channels:
+  # The door. Everything a person wants done starts here.
+  - id: steel-directory
+    name: Directory Command
+    description: >-
+      Ask for a region, a trade or a set of companies to be collected, re-checked or reviewed. The
+      coordinator splits the task, hands each stage to the specialist that owns it, and answers with
+      what came back.
+    permitted_agents:
+      - steel-directory-coordinator
+    allowed_groups:
+      - all
+
+  # The review queue, reachable on its own because "what is waiting for me" is a question somebody
+  # asks without wanting to start any work.
+  - id: steel-review
+    name: Review Queue
+    description: >-
+      What is waiting for a person: possible duplicates, numbers two sources disagree about, sources
+      behind a wall. Ask what is waiting, then say what to do about it and it is recorded against
+      your name.
+    permitted_agents:
+      - steel-directory-coordinator
+    allowed_groups:
+      - all
+
+  # The specialists, for when somebody already knows which stage they want.
+  - id: steel-collection
+    name: Collection
+    description: >-
+      Go straight to a stage: find sources for a region, read and snapshot pages, record what they
+      say about a company and its phone numbers, or decide whether two records are one company.
+    permitted_agents:
+      - steel-source-scout
+      - steel-snapshot-crawler
+      - steel-evidence-extractor
+      - steel-entity-resolver
+    allowed_groups:
+      - all
+
+  - id: steel-verification
+    name: Verification
+    description: >-
+      Cross-check what was collected, set its confidence, and keep the directory current: what to
+      re-read, what changed, and what needs a person to settle it.
+    permitted_agents:
+      - steel-verification-qa
+    allowed_groups:
+      - all

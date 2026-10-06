@@ -191,6 +191,10 @@ import { createPasswordStore } from "./passwords/store";
 import { createOnboardingStore } from "./people/onboarding";
 import { createPeopleStore } from "./people/store";
 import { useRoutineTools } from "./plugins/builtin-routines";
+import {
+  useSteelDirectoryReader,
+  useSteelDirectoryTools,
+} from "./plugins/builtin-steel-directory";
 import { useComposioClient } from "./plugins/composio";
 import { createComposioClient } from "./plugins/composio-adapter";
 import { backfillComposioLogos } from "./plugins/logos";
@@ -245,6 +249,7 @@ import { createIntentRouter } from "./routing/classify";
 import { createModelCompleter } from "./routing/model";
 import { createSelfHostBanner } from "./self-host-banner";
 import { createTeamBots } from "./team-bots/team-bots";
+import { createSteelDirectoryStore } from "./steel-directory/store";
 import {
   createPackageStatusReader,
   loadTenantPackage,
@@ -849,6 +854,53 @@ useTriggerTools({
   publicUrl: config.publicUrl ?? null,
   emailDomain: inboundEmail?.domain ?? null,
 });
+
+/**
+ * The enterprise directory, installed the same way and for the same reason.
+ *
+ * The transport is reached as a MODULE, so a store has to be handed to it from the one place that
+ * builds stores. Without this call the fifteen tools are advertised and every one of them answers
+ * "not available in this deployment" — the honest behaviour for a deployment that never wired it,
+ * and a silent outage for this one.
+ *
+ * Installed unconditionally, unlike the Composio seam above: the directory needs no key and no
+ * vendor. Whether any Bot may USE it is the grant, which is an administrator's decision, and a
+ * capability that exists but is granted to nobody is exactly the state a catalogue entry is for.
+ */
+const steelDirectoryStore = createSteelDirectoryStore(database);
+useSteelDirectoryTools(steelDirectoryStore);
+
+/**
+ * How the directory's `read_page` opens a page: THROUGH THE COMPUTER GATEWAY, and through nothing
+ * else.
+ *
+ * This is the seam that gives a headless run a browser. The frontend-registered computer tools
+ * exist only while somebody is watching, so a handoff hop or a routine has none; but the gateway
+ * works from the server on any run, and everything a page opens through it is governed the same way
+ * wherever it came from — the private-host target guard, the action policy, and an audit row naming
+ * whose run did the reading. Wiring the reader to anything cheaper (a raw fetch, a private browser
+ * pool) would create a second way out to the web that the boundary has never heard of.
+ *
+ * Absent gateway, absent reader: `read_page` stays advertised and refuses honestly, which is the
+ * same posture every other capability here takes when the thing it needs is not configured.
+ */
+useSteelDirectoryReader(
+  computerGateway
+    ? async ({ botId, actorId, url }) => {
+        const page = await computerGateway.navigate(
+          botId,
+          { id: actorId },
+          url,
+        );
+        return {
+          url: page.url,
+          title: page.title,
+          text: page.text,
+          truncated: page.truncated,
+        };
+      }
+    : null,
+);
 
 /**
  * Where a Bot handing work to another gets decided.

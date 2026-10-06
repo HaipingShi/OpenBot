@@ -1,0 +1,12 @@
+# What this deployment may connect to, as connectors rather than as directories of files.
+#
+# READ THIS BEFORE EDITING IT: this file is parsed and validated, and nothing acts on it. The
+# connector that once consumed it synced a customer's Drive into a local index using a service
+# account, so every person's question was answered from what the deployment could see rather than
+# from what they could; it was removed rather than fixed, and the file stayed part of the package
+# contract because shipped packages carry it and a malformed one should still be refused.
+#
+# The steel-directory team does not read documents. It reads web pages, with each Bot's own browser,
+# and it records what it found in its own tables. So there is nothing for this file to declare, and
+# the empty list is the honest statement of that rather than a placeholder.
+sources: []

@@ -1,0 +1,307 @@
+# The steel-trade enterprise directory: what to do at each stage, and what a good result looks like.
+#
+# WHAT A SKILL IS AND IS NOT. These are instructions, invoked with `/` in a conversation. They confer
+# nothing: what a Bot may actually call is its grants, and the tools offered on a run are the
+# intersection of those grants with what the selected skill declares. So a skill that names tools its
+# Bot does not hold loads nothing, which is why the package can ship these before anybody has run
+# `bun run steel:setup` — and why until it has been run, these Bots can talk and cannot collect.
+#
+# THE TOOL REFS ARE `steel-directory/<tool>` — the catalogue key, then the tool's own name.
+skills:
+  - slug: run-the-directory-team
+    title: Run the directory pipeline
+    summary: >-
+      Break a collection task into stages and hand each one to the specialist that owns it.
+    instructions: >-
+      Take the task and decide which stages it needs. A task that says "find traders in Tianjin" is
+      source discovery plus everything after it; a task that says "these three companies need
+      re-checking" starts at verification and needs no discovery at all. Do not run a stage nothing
+      asked for: a full sweep costs model calls at five Bots and minutes of browsing each.
+
+
+      Hand over one bounded stage at a time, using message_bot, and name what a good answer looks
+      like: which region, how many sources at most, what to do when a page refuses. The specialist
+      answers in its own conversation; you will be told when it finishes, and you do not answer on
+      its behalf or repeat its answer as your own.
+
+
+      Order matters where one stage feeds the next. Extraction needs snapshots to quote, so the reader
+      runs before the extractor; resolution needs claims to compare, so the extractor runs before the
+      resolver. Say what you have asked for and what came back, and say which stages you did not run
+      and why.
+    tools:
+      - steel-directory/search_entries
+      - steel-directory/list_sources
+      - steel-directory/list_claims
+      - steel-directory/list_review_queue
+      - steel-directory/record_review_decision
+      - routines/create_routine
+      - routines/list_routines
+
+  - slug: find-directory-sources
+    title: Find sources for a region or trade
+    summary: >-
+      Search for pages that list steel-trade companies and register each one with its kind.
+    instructions: >-
+      Start from what the task names — a province, a city, a trade (trading, processing, logistics),
+      or a product. Search engines and industry portals first, then the places that aggregate:
+      industrial parks, industry associations, procurement and tender platforms, industry media.
+
+
+      Open every page before you register it — with read_page when you are on your own, or with your
+      browser when somebody is watching. Look at what the page actually is: a company's own site, a
+      park's company list, an association roster, a tender notice, a news article, an aggregator.
+      That decides the `kind` you pass, and the kind matters downstream — a name is well evidenced by
+      any of them, an operating capability much more by a company's own page, a trading relationship
+      by a tender notice.
+
+
+      One source is one address. A roster page and a company's own site are two sources. A roster that
+      continues over five pages is five sources, and the reader will need each one recorded to
+      snapshot it.
+
+
+      A page that will not let you read it — a sign-in, a CAPTCHA, a subscription, a robots refusal —
+      is still worth registering, and then marked blocked with the reason. That record is what tells a
+      person what this region's data costs to get. Do not try to get past it and do not ask for help
+      getting past it.
+
+
+      Say how many you registered, of which kinds, and what fraction of the pages you opened refused
+      you.
+    tools:
+      - steel-directory/record_source
+      - steel-directory/mark_source_blocked
+      - steel-directory/list_sources
+      - steel-directory/read_page
+
+  - slug: capture-a-page
+    title: Read a page and record a snapshot
+    summary: >-
+      Open a registered page, read it, and record it with a fingerprint so later runs can tell
+      whether it changed.
+    instructions: >-
+      Take the source id, find its address with list_sources if you do not have it, and open it. In
+      a run with no browser attached — a handoff, a routine — read_page is the way: it works
+      headless, and it returns the readable text together with the sha256 fingerprint
+      record_snapshot takes. When you do have a browser, computer_navigate is the same trip with a
+      screen people can watch; save the page's text into a file in your workspace either way, because
+      that file is the record of what you read and it is where a later check will look.
+
+
+      Call record_snapshot with the exact address you read, the fingerprint, the status and a short
+      excerpt around anything the extractor will need. If the tool answers that this is a duplicate,
+      this deployment already holds that page unchanged: say so, and do not record anything from it
+      again.
+
+
+      A page that lists many companies still gets ONE snapshot. The page is the unit, not the
+      company: the extractor reads the entries off it and quotes the snapshot for each.
+
+
+      A page that refuses you — a sign-in form, a CAPTCHA, a payment wall, robots — is not a page you
+      try to get into. Call mark_source_blocked on the source with the reason, put what you actually
+      saw in the note, and move on. Do not type into a sign-in field, do not ask a person to sign in
+      or to type a code, and do not call computer_request_help for it: this team does not collect
+      through anybody's account.
+    tools:
+      - steel-directory/list_sources
+      - steel-directory/read_page
+      - steel-directory/record_snapshot
+      - steel-directory/mark_source_blocked
+
+  - slug: extract-company-facts
+    title: Record what a page says about a company
+    summary: >-
+      Turn a page into entries and field claims, structured fields first, each with the sentence that
+      states it.
+    instructions: >-
+      Work through the page and, for each company on it, call record_entry once and then record_claim
+      for every field the page states — website, address, region, legal_representative, founded,
+      registered_capital, employees, main_products, capacity, business_scope, whatever it actually
+      says. Search first with search_entries on the name and the credit code: a company already held
+      is refined rather than duplicated, and the tool will tell you which happened.
+
+
+      Read structured data with a rule, not with your eyes: a table, a JSON-LD block, a CSV link. Pass
+      `extractionMethod: "rule"` for those and `"model"` for prose, and say where on the page it was
+      with `evidenceLocator`. A value read off a table and a value inferred from a paragraph are not
+      equally certain, and the field records which one it was.
+
+
+      QUOTE, DO NOT SUMMARISE. `evidenceQuote` is the sentence on the page, in the page's own words.
+      If the page says "年产能 120 万吨", the claim value is that, not "annual capacity of 1.2 million
+      tonnes" — your translation belongs in your answer to the person, not in the record. If you
+      cannot quote it, do not record it.
+
+
+      A credit code is worth finding and never worth inventing. Eighteen characters, digits and
+      upper-case letters, and the tool refuses anything else.
+
+
+      When you are on your own — a handoff, a routine — read_page is how you open the page you
+      extract from: it works without a browser and returns the text and its fingerprint. Quote from
+      what it returns, exactly as it returns it.
+    tools:
+      - steel-directory/search_entries
+      - steel-directory/record_entry
+      - steel-directory/record_claim
+      - steel-directory/list_claims
+      - steel-directory/read_page
+
+  - slug: extract-phone-numbers
+    title: Record phone numbers
+    summary: >-
+      Record every phone number a page prints, with the label the page puts beside it.
+    instructions: >-
+      Phone numbers are what this directory is for, so this is the step worth taking slowly. For every
+      number on the page call record_phone_claim with the entry it belongs to, the number exactly as
+      printed including its area or country code, and the quote it appears in.
+
+
+      SAY WHO IT REACHES. `label` is the word the page puts next to the number — 销售部, 采购部, 总机,
+      after-sales, the switchboard — and it is what makes a number usable. A number with no label is
+      worth much less, so look at what is beside it rather than only at the digits. `phoneType` says
+      whether it is a landline, a mobile, a hotline or a fax; the area code usually tells you, and a
+      fax usually says so.
+
+
+      The same number printed on the homepage and on the contact page is one number. The tool
+      recognises it and raises the confidence rather than recording it twice — repeated sightings make
+      a number more believable, which is exactly what the confidence is for.
+
+
+      Every number you record goes to a person for review before it counts as collected. That is the
+      step this whole pipeline is built around, so record the number and its evidence well and let the
+      queue do its work. Say how many you recorded and for which companies.
+    tools:
+      - steel-directory/search_entries
+      - steel-directory/record_phone_claim
+      - steel-directory/list_claims
+      - steel-directory/read_page
+
+  - slug: resolve-a-company
+    title: Decide whether two records are one company
+    summary: >-
+      Compare records, merge what the evidence supports, and send the ambiguous pairs to a person.
+    instructions: >-
+      Search before you conclude: search_entries on the name, the short name and the credit code, then
+      list_claims on each candidate. What looks like a new company is often an existing one under a
+      different spelling, or a subsidiary trading under the parent's name.
+
+
+      If both records hold the same unified social credit code, they are one legal entity: call
+      resolve_entry, which recognises it and merges outright. If only one holds a code, that is a gap
+      rather than an identity — find the missing code before deciding anything.
+
+
+      Without matching codes, resolve_entry scores the pair itself from the names, short names,
+      region, address, website and phone the two records hold — counting only what BOTH of them
+      have, since a fact one of them lacks is a gap rather than a disagreement. It refuses outright
+      when the names are different, queues the pair for a person when the answer is close but not
+      conclusive, and merges when the names and at least one other fact agree. Read the answer: a
+      refusal is not an error to work around, and swapping the two ids will not change it — the
+      score is symmetric. What changes it is another fact, so go and find one: registered address,
+      switchboard, an association roster that lists both under one name.
+
+
+      A shared phone number on its own is not identity. Companies in one park share switchboards
+      routinely. Report what you compared, what the score was, and which pairs are waiting for a
+      person.
+    tools:
+      - steel-directory/search_entries
+      - steel-directory/list_claims
+      - steel-directory/resolve_entry
+      - steel-directory/queue_review
+
+  - slug: verify-a-company
+    title: Cross-check a company and set its confidence
+    summary: >-
+      Compare what different sources say about one company and record the verdict.
+    instructions: >-
+      Read everything held about the company with list_claims, then compare sources rather than fields.
+      The question is not "is this recorded" but "do independent pages agree": a name on the company's
+      own site and in an association roster is corroborated, a number printed on three pages is
+      strong, and a capacity figure that only the company itself states is the company's own claim
+      rather than corroboration.
+
+
+      Record the verdict with verify_entry and say in the note what was compared and what agreed:
+      `cross_checked` when independent sources agree, `contradicted` when they disagree about
+      something that matters, `needs_more_evidence` when not enough has been read. The last two queue
+      the entry for a person automatically — do not settle a disagreement yourself and do not change
+      an entry's status.
+
+
+      Anything else that needs a judgement call goes to the queue with queue_review: a merge in the
+      ambiguous band, a number two sources disagree about, a credit code that appeared against two
+      names, a company whose only evidence is an aggregator. Say the disagreement in one sentence and
+      rank it — a contradicted number is an 8, a spelling is a 2. Do not call
+      record_review_decision: that records a person's decision, and only when they have made one.
+    tools:
+      - steel-directory/list_claims
+      - steel-directory/verify_entry
+      - steel-directory/queue_review
+      - steel-directory/list_review_queue
+      - steel-directory/search_entries
+
+  - slug: refresh-the-directory
+    title: Re-check entries whose evidence has aged
+    summary: >-
+      Re-read the sources behind an entry, compare fingerprints, and queue what moved.
+    instructions: >-
+      Pick the entries the task names, or the ones whose evidence has aged — a site redesigned, a
+      number that has moved, a company that may have stopped trading. For each, list_claims to see
+      which pages its facts came from, then ask the reader to open those pages again and record fresh
+      snapshots.
+
+
+      Compare what changed rather than re-reading everything: a page whose fingerprint matches is a
+      page that has not changed, and the snapshot tool will say so. A page that changed has a new
+      fingerprint, and what matters is which claims it still supports — a number that disappeared from
+      a contact page is not proof it is dead, and a number that changed is worth a new claim rather
+      than an edit of the old one.
+
+
+      Where a fact has moved or disagrees with the old one, record the new claim with its own quote,
+      and queue the pair for a person: which of two numbers is current is a decision for somebody who
+      can phone them. `contradicted` from verify_entry does this as well.
+
+
+      Report what was re-read, what had changed, and what is waiting for a person.
+    tools:
+      - steel-directory/search_entries
+      - steel-directory/list_claims
+      - steel-directory/queue_review
+      - steel-directory/verify_entry
+
+  - slug: handle-review-decisions
+    title: Work the review queue with a person
+    summary: >-
+      Read out what is waiting, record what the person decides, and say what that changed.
+    instructions: >-
+      When somebody asks what is waiting, call list_review_queue and read it back in priority order:
+      what each item is, and the reason it was queued. Do not summarise it into a count — the reasons
+      are the point, and they are what the person decides from.
+
+
+      When the person says what to do with one — "approve that number", "reject that duplicate",
+      "we need the registered address before we decide" — call record_review_decision with their
+      decision and, in the note, their reason in their own words. Their name goes on it from the run
+      itself; you cannot and must not supply it.
+
+
+      NEVER RECORD A DECISION NOBODY MADE. Not for something obvious, not for something the queue
+      says is high priority, not because a number looks right to you. An approval is a person saying
+      they checked, and a record that says they did when they did not is worse than an empty queue.
+      If they have not said, the item waits and you say it is waiting.
+
+
+      Say what the decision changed: an approved number now counts as collected, an approved company
+      stays in the directory, a rejected one stops being read as data, and `needs_more_evidence` puts
+      it back with what is missing noted. Do not decide the next item on their behalf.
+    tools:
+      - steel-directory/list_review_queue
+      - steel-directory/record_review_decision
+      - steel-directory/list_claims
+      - steel-directory/search_entries

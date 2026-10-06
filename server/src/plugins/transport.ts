@@ -1,4 +1,5 @@
 import * as builtinRoutines from "./builtin-routines";
+import * as builtinSteelDirectory from "./builtin-steel-directory";
 import * as composio from "./composio";
 import * as driveRest from "./google-drive-rest";
 import type { ListedTool, McpCallResult } from "./mcp";
@@ -119,6 +120,7 @@ export type TransportKind =
   | "mcp"
   | "google-drive-rest"
   | "builtin-routines"
+  | "builtin-steel-directory"
   | "composio";
 
 /**
@@ -144,6 +146,7 @@ const TRANSPORTS: Record<TransportKind, VendorTransport> = {
   mcp,
   "google-drive-rest": driveRest,
   "builtin-routines": builtinRoutines,
+  "builtin-steel-directory": builtinSteelDirectory,
   composio,
 };
 

@@ -102,10 +102,14 @@ describe("which servers this deployment will talk to", () => {
         expect(entry.hostPattern?.startsWith("^")).toBe(true);
         expect(entry.hostPattern?.endsWith("$")).toBe(true);
       } else if (entry.auth.kind === "builtin") {
-        // First-party and in-process: there is no host outside this process to reach, so the
-        // https requirement below does not apply. Asserted positively instead, so this branch
-        // cannot quietly become a loophole for a future entry that DOES dial a real host.
-        expect(entry.host).toBe("builtin://routines");
+        /*
+         * First-party and in-process: there is no host outside this process to reach, so the https
+         * requirement below does not apply. Asserted positively instead, so this branch cannot
+         * quietly become a loophole for a future entry that DOES dial a real host: the host has to
+         * be this deployment's own `builtin://` address for THIS entry, spelled from the entry's own
+         * key rather than from a list of the ones that exist today.
+         */
+        expect(entry.host).toBe(`builtin://${entry.key}`);
       } else {
         expect(entry.host.startsWith("https://")).toBe(true);
       }
@@ -291,6 +295,81 @@ describe("Routines", () => {
     for (const name of [
       ...(entry?.writeTools ?? []),
       "list_routines",
+      "brand-new-tool",
+    ]) {
+      expect(classifyTool(entry, name, false)).toBe("write");
+    }
+  });
+});
+
+describe("Enterprise Directory", () => {
+  const entry = catalogueEntry("steel-directory");
+
+  test("is in the catalogue and resolves to its own builtin address", () => {
+    expect(entry).not.toBeNull();
+    expect(resolveServerUrl("steel-directory")?.url).toBe(
+      "builtin://steel-directory",
+    );
+  });
+
+  test("has no credential, because there is nothing to authenticate to", () => {
+    // The calls run against this deployment's own tables. There is no vendor, so there is no token,
+    // and a row claiming one would be a credential this deployment had invented.
+    expect(entry?.auth.kind).toBe("builtin");
+  });
+
+  test("is reached through the builtin transport, not a vendor", () => {
+    expect(entry?.transport).toBe("builtin-steel-directory");
+  });
+
+  test("pins the exact write list, so a dropped or renamed entry fails here", () => {
+    /*
+     * Copied from the entry in its declared order, not compared against itself. This list IS the
+     * policy's vocabulary for this capability — `classifyTool` reads an advertised name it does not
+     * hold as a READ — so a name silently dropped here would be a write no rule about writes covers.
+     */
+    expect(entry?.writeTools).toEqual([
+      "record_source",
+      "mark_source_blocked",
+      "record_snapshot",
+      "record_entry",
+      "record_claim",
+      "record_phone_claim",
+      "resolve_entry",
+      "verify_entry",
+      "queue_review",
+      "record_review_decision",
+    ]);
+  });
+
+  test("every read tool the transport lists is advertised where review declined to call it a write", () => {
+    // The other half of the same property: the five query tools are absent from writeTools, so they
+    // must classify as reads when advertised. `read_page` is the interesting one: it opens a page,
+    // but it changes nothing — the same reason `computer_navigate` is not a write — and the page it
+    // opens only becomes a record when record_snapshot persists it. A name added to the transport
+    // and forgotten here would classify as a read too — which is why the list above is pinned
+    // rather than derived.
+    for (const name of [
+      "list_sources",
+      "search_entries",
+      "list_claims",
+      "list_review_queue",
+      "read_page",
+    ]) {
+      expect(classifyTool(entry, name, true)).toBe("read");
+    }
+  });
+
+  test("classifies its tools the same way every other vendor's are classified", () => {
+    for (const name of entry?.writeTools ?? []) {
+      expect(classifyTool(entry, name, true)).toBe("write");
+    }
+    // A name nothing here has vouched for is a write, the same as for any other vendor.
+    expect(classifyTool(entry, "brand-new-tool", false)).toBe("write");
+    for (const name of [
+      ...(entry?.writeTools ?? []),
+      "list_sources",
+      "read_page",
       "brand-new-tool",
     ]) {
       expect(classifyTool(entry, name, false)).toBe("write");

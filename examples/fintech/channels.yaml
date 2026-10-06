@@ -14,3 +14,8 @@ channels:
     description: Find authorized answers from company documents.
     permitted_agents: [knowledge]
     allowed_groups: [all]
+  - id: network-security
+    name: Network & Security
+    description: Diagnose network connectivity, scan ports, inspect APIs, and audit configurations.
+    permitted_agents: [netsec-analyst]
+    allowed_groups: [all]

@@ -1,5 +1,6 @@
 import type { BaseEvent, Message, RunAgentInput } from "@ag-ui/client";
 import { AbstractAgent, HttpAgent } from "@ag-ui/client";
+import { createOpenAI } from "@ai-sdk/openai";
 import type { BuiltInAgentConfiguration } from "@copilotkit/runtime/v2";
 import {
   BuiltInAgent,
@@ -338,6 +339,28 @@ export function standingInstructionsGuidance(
     `The person you are working with has standing instructions that apply in every channel and every task, alongside your role: ${trimmed}`,
     "Where the two conflict, the role decides what you do and these decide how you do it.",
   ].join("\n\n");
+}
+
+/**
+ * The model a built-in coworker answers on.
+ *
+ * A STRING WHEN NO COMPATIBLE ENDPOINT IS SET, because that is all a real OpenAI deployment needs:
+ * the runtime resolves `openai/<model>` itself, and its resolution is the Responses API, which is
+ * what the current OpenAI models answer.
+ *
+ * A CHAT MODEL WHEN `OPENAI_BASE_URL` IS SET, and that is a fix for a real failure rather than a
+ * preference. That variable is documented — `.env.example`, `docs/configuration.md` — as "any
+ * endpoint speaking the same `/v1/chat/completions` API": a gateway, a proxy, a model on hardware
+ * you control. The runtime's string resolution knows nothing about it and still asks for
+ * `/responses`, which such an endpoint does not implement, so every built-in coworker's first turn
+ * failed with a 404 from the gateway and the person saw a Bot that never answered. Pointing the AI
+ * SDK's own OpenAI provider at the configured URL and taking `.chat()` is exactly the documented
+ * contract: the URL is used verbatim and the call is a chat completion.
+ */
+function builtInModel(model: RuntimeModel, apiKey: string) {
+  const baseURL = process.env.OPENAI_BASE_URL?.trim();
+  if (!baseURL) return `${model.provider}/${model.defaultModel}`;
+  return createOpenAI({ apiKey, baseURL }).chat(model.defaultModel);
 }
 
 export function builtInAgentConfiguration(

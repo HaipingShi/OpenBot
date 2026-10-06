@@ -236,3 +236,61 @@ skills:
       save_bot once, at the end. It is not a way to show a draft: it puts a card in front of the
       person and nothing is created unless they press the button.
     tools: []
+
+  # Daily Network Diagnostics Skill
+  - slug: diagnose-network
+    title: Diagnose network
+    summary: Troubleshoot network connectivity, DNS resolution, and route hops to a target.
+    instructions: >-
+      You are diagnosing network reachability and performance for a specified host or domain.
+      First verify that a target is clearly specified. If no target was given, ask for one plainly before running any commands.
+      Execute systematic diagnostics in logical order using your computer's shell:
+      1. DNS Resolution: Query the domain with dig or nslookup. If resolution fails, report DNS failure and recommend checking nameservers or local /etc/resolv.conf.
+      2. ICMP / IP Reachability: Send 3-4 ICMP echo packets with ping -c 4. If ICMP is dropped, note whether it is likely firewalled or unreachable.
+      3. Path & Routing: Run traceroute or mtr -r -c 1 to inspect intermediate hops and locate packet loss or latency spikes.
+      Always present results in a structured format: Target, Test Executed, Observed Metrics (Latency/Packet Loss), Failure Points (if any), and Root Cause Assessment.
+    tools: []
+
+  # Safe Scoped Port Scanning Skill
+  - slug: scan-ports
+    title: Scan ports safely
+    summary: Perform safe, scoped port and service discovery on an authorized target.
+    instructions: >-
+      You are performing authorized, gentle port and service discovery on a target.
+      Always confirm the target host or IP before executing.
+      Follow strict Rules of Engagement (RoE):
+      1. Use safe scanning options: run nmap with TCP connect (-sT) or default SYN scan (-sS if permitted), reasonable timing (-T3), and limit to specified ports or --top-ports 100. Never use aggressive/flood templates (-T5) or destructive exploit scripts.
+      2. If all ports are filtered or closed, state that clearly and explain possible firewalling rather than guessing services.
+      3. For any open port, identify the service banner and protocol.
+      Present findings in a table with columns: Port, Protocol, State (open/filtered/closed), Service Name, and Version (if detected).
+      Highlight any unexpected or sensitive services (such as unencrypted management ports, telnet, exposed database ports) with security recommendations.
+    tools: []
+
+  # API Health and Security Check Skill
+  - slug: inspect-api
+    title: Inspect API
+    summary: Check HTTP/REST API endpoints, status codes, response headers, CORS, and SSL/TLS.
+    instructions: >-
+      You are inspecting the health, response behavior, and security baseline of an HTTP/HTTPS API endpoint.
+      Verify the endpoint URL before calling it.
+      Perform checks in steps:
+      1. Baseline HTTP Request: Run curl -i -s -S to check the HTTP status code, response time, and payload structure. Parse JSON responses with jq if applicable.
+      2. Security Headers Audit: Check for essential security headers (Strict-Transport-Security, Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy). Report which ones are present and which are missing.
+      3. CORS Evaluation: Send a test preflight request (Origin header) to check Access-Control-Allow-Origin behavior. Warn if wildcard (*) is combined with credentials.
+      4. TLS/SSL Security: For HTTPS, inspect the certificate validity and cipher suites using curl -vI or testssl.sh.
+      Format your report into: Endpoint, Response Status & Latency, Security Headers Audit, and Security Baseline Advice.
+    tools: []
+
+  # Configuration & Secrets Auditing Skill
+  - slug: audit-config
+    title: Audit configuration
+    summary: Audit infrastructure configuration files, Dockerfiles, or Nginx configs for security weaknesses.
+    instructions: >-
+      You are auditing an infrastructure, server, or application configuration file (e.g. Nginx, Dockerfile, docker-compose, SSH, or env files) for misconfigurations and security risks.
+      Read the target file from the workspace or review the configuration snippet provided in conversation.
+      Check against security best practices:
+      1. Exposed Secrets: Detect hardcoded passwords, API tokens, private keys, or credentials.
+      2. Over-permissive Access: Look for root user execution (e.g., non-root user in Docker), privileged mode, permissive CORS/file permissions (chmod 777).
+      3. Insecure Defaults: Identify plaintext communication (HTTP, FTP, Telnet), outdated protocols, missing rate limits, or exposed debugging/metrics ports.
+      Always structure the audit findings with: Severity (High/Medium/Low), Finding Description, Affected Line/Setting, and Recommended Fixed Configuration snippet.
+    tools: []
